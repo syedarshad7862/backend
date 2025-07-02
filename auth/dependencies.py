@@ -10,7 +10,7 @@ import os
 load_dotenv()
 
 
-SECRET_KEY = "matrimonial-meer-ahmed-sir"
+SECRET_KEY = 'matrimonial-meer-ahmed-sir'
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -25,7 +25,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})  # 🔄 Expiration claim
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)  # 🔑 Encode JWT
+    return jwt.encode(to_encode,SECRET_KEY, algorithm=ALGORITHM)  # 🔑 Encode JWT
 
 
 
@@ -48,11 +48,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 #         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-async def get_authenticated_agent_db(token: str = Depends(oauth2_scheme)):
+async def get_authenticated_agent_db(request: Request):
     """
     Dependency to get the current authenticated agent's user data and their specific database.
     Decodes the JWT token to get agent information, and constructs the agent's database reference.
     """
+    
+    token = request.cookies.get("accessToken") or \
+            request.headers.get("Authorization", "").replace("Bearer ", "")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
