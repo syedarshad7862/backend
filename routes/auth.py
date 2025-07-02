@@ -62,6 +62,12 @@ async def login_for_access_token(response: Response,form_data: OAuth2PasswordReq
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
+
+@router.post("/logout")
+async def logout_agent(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out successfully"}
+
     
 
 # eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZ2VudF9pZCI6IjY4NjMwYzc5MjI4MTJiMWE5ODUzYTZlZSIsImFnZW50X3VzZXJuYW1lIjoiYXJzaGFkIiwiZW1haWwiOiJhcnNoYWRAZ21haWwuY29tIiwiZXhwIjoxNzUxMzI2MjY4fQ.FXz_pZPmCME91eDYWLporatGRXo1QlmQAWBuXKQiCaM
