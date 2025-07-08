@@ -1,7 +1,9 @@
-from fastapi import FastAPI, APIRouter,status,HTTPException,Depends
+from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request
 from fastapi.responses import JSONResponse
 from database import database
 from models import schemas
+from bson import ObjectId
+from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
 
 app = FastAPI()
@@ -61,6 +63,37 @@ async def create_profile( profile : schemas.ProfileCreate,user_db= Depends(get_a
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
 
-# @router.get("/get-profile")
-# def get_profile()
+@router.get("/get-profile/{profile_id}")
+async def edit_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):
+    user, db = user_db
+    try:
+        obj_id = ObjectId(profile_id)
+    except InvalidId:
+        return {"error": "Invalid ID"}
+    profile = await db["user_profiles"].find_one({'_id': obj_id})
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile not found",
+        )
+    
+    profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
+
+    return JSONResponse(status_code=200, content={"profile":profile})
+
+@router.delete("/delete-profile/{profile_id}")
+async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):
+    user, db = user_db
+    try:
+        obj_id = ObjectId(profile_id)
+    except InvalidId:
+        return {"error": "Invalid ID"}
+    profile = await db["user_profiles"].find_one_and_delete({'_id': obj_id})
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile not found",
+        )
+    profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
+    return JSONResponse(status_code=200, content={"messeage": "profile deleted"})
     

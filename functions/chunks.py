@@ -16,7 +16,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
     # Ensure required fields exist
     required_fields = ["pref_age_range", "pref_marital_status", "pref_complexion", "pref_education", "pref_height", 
                     "pref_native_place", "pref_maslak_sect", "pref_no_of_siblings", "pref_work_job", "pref_go_to_dargah", "pref_mother_tongue", "pref_deendari","profile_id","sect", "religious_practice", "full_name", "date_of_birth", "age","gender", "marital_status","maslak_sect","religion", 
-                "religion", "education", "father" ,"mother", "father_name", "height", "native_place",'occupation','preferences',"religious_sect"]
+                "religion", "education", "father" ,"mother", "father_name", "height", "native_place","ethnicity",'occupation','preferences',"pref_location","pref_own_house","religious_sect"]
     for field in required_fields:
         if field not in df.columns:
             df[field] = "unknown"
@@ -63,6 +63,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
         "Education: "+ " " + df["education"].astype(str) + " \n" +
         "Height: "+ " " + df["height"].astype(str) + " \n" +
         "Native_place: "+ " " + df["native_place"].astype(str) + " \n" +
+        "ethnicity: "+ " " + df["ethnicity"].astype(str) + " \n" +
         "residence: "+ " " + df["residence"].astype(str) + " \n" +
         "Father: "+ " " + df["father"].astype(str) + " \n" +
         "Mother: "+ " " + df["mother"].astype(str) + " \n" +

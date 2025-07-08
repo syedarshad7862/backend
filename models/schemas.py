@@ -6,6 +6,9 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="User's unique username")
     email: EmailStr = Field(..., description="User's email address")
     password: str = Field(..., min_length=8, description="User's password")
+class UserLogin(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50, description="User's unique username")
+    password: str = Field(..., description="User's password")
     
 class UserPublic(BaseModel):
     id: str
@@ -16,6 +19,9 @@ class UserPublic(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+class SelectProfile(BaseModel):
+    profile_id: str
+    top: int
     
 class ProfileCreate(BaseModel):
     full_name: str

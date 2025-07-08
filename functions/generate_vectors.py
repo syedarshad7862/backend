@@ -1,5 +1,4 @@
 import pandas as pd
-from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import faiss
@@ -76,7 +75,7 @@ async def create_faiss_index(mongodb_uri, db_name, collection_name):
         "occupation: "+ " " + female_df["occupation"].astype(str) + " \n" +
         "Preference: "+ " " + female_df["preferences"].astype(str)
     )
-    texts = female_df["text"].tolist()
+    # texts = female_df["text"].tolist()
     
     male_embeddings = model.encode(male_df["text"].tolist()).astype("float32")
     female_embeddings = model.encode(female_df["text"].tolist()).astype("float32")

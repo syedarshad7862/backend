@@ -12,9 +12,10 @@ load_dotenv()
 
 SECRET_KEY = 'matrimonial-meer-ahmed-sir'
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 MONGO_URI = os.getenv("MONGO_URI")
+# print(MONGO_URI)
 # connect = MongoClient(MONGO_URI)
 client = AsyncIOMotorClient(MONGO_URI)
 agents_db = client["matrimony_agents"] # Common DB for storing agents
@@ -94,7 +95,8 @@ async def get_authenticated_agent_db(request: Request):
         user_data = {"agent_id": agent_id, "agent_username": agent_username, "email": email}
 
         # Construct the agent's specific database reference
-        agent_db = client[f"matrimony_{agent_username}_{agent_id}"]
+        # agent_db = client[f"matrimony_{agent_username}_{agent_id}"]
+        agent_db = client[f"{agent_username}_matrimony"]
         
         return user_data, agent_db
     except JWTError as e:

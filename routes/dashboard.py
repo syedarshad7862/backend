@@ -1,12 +1,10 @@
 from fastapi import FastAPI, APIRouter,status,HTTPException,Depends
 from fastapi.responses import JSONResponse
-from database import database
 from auth.dependencies import get_authenticated_agent_db
 
 app = FastAPI()
 
 router = APIRouter(
-    prefix='/dashboard',
     tags=['Dashboard'],
     dependencies=[Depends(get_authenticated_agent_db)] 
     )
@@ -22,4 +20,6 @@ async def get_dashboard_data(user_db= Depends(get_authenticated_agent_db)):
 
     # Count female users
     total_female = await db["user_profiles"].count_documents({"gender": "Female"})
+    print(user)
+    print("jk;dj",db)
     return JSONResponse(status_code=status.HTTP_200_OK, content={'total_profiles': total_profiles,'total_male': total_male, 'total_female': total_female})

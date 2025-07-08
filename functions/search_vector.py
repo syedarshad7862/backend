@@ -10,13 +10,13 @@ load_dotenv()
 def normalize_embeddings(embeddings):
     return embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
-def extract_indices_from_vector(df, user_name,top_k):
+def extract_indices_from_vector(df, profile_id,top_k):
     
     # Get user profile
-    user_profile = df[df["full_name"] == user_name]
+    user_profile = df[df["profile_id"] == profile_id]
     if user_profile.empty:
         return pd.DataFrame(), "❌ User not found."
-
+    print(f"username find in {user_profile}")
     user_gender = user_profile.iloc[0]["gender"]
 
     model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -24,11 +24,11 @@ def extract_indices_from_vector(df, user_name,top_k):
     # Select the appropriate FAISS index
     if user_gender == "Male":
         matched_df = df[df["gender"] == "Female"]  # Male searches for females
-        index_path = r"C:\Users\ThinkPad\Desktop\python projects\matrimony_backend\newvectorstore\female_index.faiss"  # Male users search in the female index
+        index_path = r"C:\Users\ThinkPad\Desktop\python projects\backend\newvectorstore\female_index.faiss"  # Male users search in the female index
         opposite_gender = "Female"
     elif user_gender== "Female":
         matched_df = df[df["gender"] == "Male"]  # Female searches for males
-        index_path = r"C:\Users\ThinkPad\Desktop\python projects\matrimony_backend\newvectorstore\male_index.faiss"  # Female users search in the male index
+        index_path = r"C:\Users\ThinkPad\Desktop\python projects\backend\newvectorstore\male_index.faiss"  # Female users search in the male index
         opposite_gender = "Male"
     else:
         return pd.DataFrame(), "❌ Invalid gender."

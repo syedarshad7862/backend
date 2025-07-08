@@ -1,5 +1,10 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import SystemMessage, HumanMessage
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 def semantic_search_llm(matched_profiles, query_text):
     
