@@ -21,6 +21,8 @@ async def get_register(user: schemas.UserCreate):
     "username": user.username,
     "email": user.email,
     "password": hash_password(user.password),
+    "role": user.role,
+    "status": user.status,
     "created_at": datetime.datetime.now(datetime.timezone.utc)
     }
     print(MONGO_URI)
@@ -47,18 +49,44 @@ async def login_for_access_token(response: Response,form_data: schemas.UserLogin
         """   
     # print(form_data.username)
     db_agents = await database.agents_collection.find_one({'username': form_data.username})
+    
+    
     if not db_agents or not verify_password(form_data.password, db_agents["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    if db_agents["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Not approved yet")
         
-    access_token = create_access_token(data={"agent_id": str(db_agents["_id"]),"agent_username":str(db_agents["username"]), "email": db_agents["email"]})
+    access_token = create_access_token(data={"agent_id": str(db_agents["_id"]),"agent_username":str(db_agents["username"]), "email": db_agents["email"], "role": "user"})
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True,samesite='lax')
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.post("/admin-login", response_model=schemas.Token)
+async def admin_login(response: Response,form_data: schemas.UserLogin): 
+    # print(form_data.username)
+    db_agents = await database.agents_collection.find_one({'username': form_data.username})
+    
+    if not db_agents or not verify_password(form_data.password, db_agents["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if db_agents["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Administrator privileges required."
+        )
+        
+    access_token = create_access_token(data={"agent_id": str(db_agents["_id"]),"agent_username":str(db_agents["username"]), "email": db_agents["email"], "role": "admin"})
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True,samesite='lax')
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/logout")
 async def logout_agent(response: Response):

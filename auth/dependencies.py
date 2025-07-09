@@ -72,27 +72,16 @@ async def get_authenticated_agent_db(request: Request):
         agent_id: Optional[str] = payload.get("agent_id")
         agent_username: Optional[str] = payload.get("agent_username")
         email: Optional[str] = payload.get("email")
+        role: Optional[str] = payload.get("role")
 
         if agent_id is None or agent_username is None or email is None:
             raise credentials_exception
             
         # Ensure agent_username is lowercase for consistent database naming
-        agent_username = agent_username.lower()
-
-        # You might want to validate if the user exists in a central user store
-        # before proceeding to construct their specific database connection.
-        # This is where `crud.get_user_by_username` or similar would fit.
-        # For this specific conversion, we're directly using the payload.
-        # If you need to verify the user against a central user database
-        # based on the `agent_username` or `agent_id` from the token, you'd do it here:
-        #
-        # user_from_db = await crud.get_user_by_username(agent_username)
-        # if user_from_db is None:
-        #     raise credentials_exception
-        # user_data = UserInDB(**user_from_db)
+        agent_username = agent_username.lower().replace(" ", "_")
 
         # Construct the user data as your 'user' dictionary/object
-        user_data = {"agent_id": agent_id, "agent_username": agent_username, "email": email}
+        user_data = {"agent_id": agent_id, "agent_username": agent_username, "email": email, "role": role}
 
         # Construct the agent's specific database reference
         # agent_db = client[f"matrimony_{agent_username}_{agent_id}"]
@@ -100,33 +89,19 @@ async def get_authenticated_agent_db(request: Request):
         
         return user_data, agent_db
     except JWTError as e:
-        # This catches various JWT errors like ExpiredSignatureError, InvalidTokenError, etc.
-        # The `detail` message can be more specific if you catch individual exceptions
-        # as in your original function, but `JWTError` is a good catch-all for invalid tokens.
         print(f"JWT Error: {e}") # Log the specific error for debugging
         raise credentials_exception
     except Exception as e:
-        # Catch any other unexpected errors during the process
+        import traceback
+        traceback.print_exc()
         print(f"An unexpected error occurred: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred during authentication."
         )
 
-# --- Example Usage in a FastAPI Path Operation ---
-# from fastapi import FastAPI
-# app = FastAPI()
-
-# @app.get("/protected-route")
-# async def read_protected_data(
-#     authenticated_agent_info: tuple[UserInDB, Any] = Depends(get_authenticated_agent_db)
-# ):
-#     user, agent_db = authenticated_agent_info
-#     # Now you have the user's details and their specific database connection
-#     # You can use agent_db to perform operations specific to this agent.
-#     return {
-#         "message": f"Welcome, {user.agent_username}! Accessing your database.",
-#         "agent_id": user.agent_id,
-#         "agent_email": user.email,
-#         "agent_db_info": str(agent_db) # For demonstration, convert to string
-#     }
+def admin_required(user_db = Depends(get_authenticated_agent_db)):
+    user, db = user_db
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user

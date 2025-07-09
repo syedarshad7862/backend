@@ -64,7 +64,7 @@ async def create_profile( profile : schemas.ProfileCreate,user_db= Depends(get_a
     
 
 @router.get("/get-profile/{profile_id}")
-async def edit_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):
+async def get_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):
     user, db = user_db
     try:
         obj_id = ObjectId(profile_id)
@@ -80,6 +80,44 @@ async def edit_profile(request: Request,profile_id: str,user_db=Depends(get_auth
     profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
 
     return JSONResponse(status_code=200, content={"profile":profile})
+
+@router.put("/update-profile/{profile_id}")
+async def update_profile(
+    profile_id: str,
+    update_data: schemas.UpdateProfileRequest,
+    user_db=Depends(get_authenticated_agent_db)
+):
+    user, db = user_db
+
+    # Validate ObjectId
+    try:
+        obj_id = ObjectId(profile_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid profile ID")
+
+    # Convert Pydantic model to dict, skipping None fields
+    update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    # Perform the update
+    result = await db["user_profiles"].update_one(
+        {"_id": obj_id},
+        {"$set": update_dict}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    # Optional: Fetch updated profile to return
+    updated_profile = await db["user_profiles"].find_one({"_id": obj_id})
+    updated_profile["_id"] = str(updated_profile["_id"])
+
+    return JSONResponse(status_code=200, content={
+        "message": "Profile updated successfully",
+        "profile": updated_profile
+    })
 
 @router.delete("/delete-profile/{profile_id}")
 async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):

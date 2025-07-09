@@ -18,3 +18,4 @@ def agent_helper(agent) -> dict:
         "email": agent["email"],
         "full_name": agent.get("full_name"),
     }
+

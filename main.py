@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import auth, dashboard, user_profile, match_profile
+from routes import auth, dashboard, user_profile, match_profile, admin
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
@@ -19,6 +19,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(user_profile.router)
 app.include_router(match_profile.router)
+app.include_router(admin.router)
 
 @app.get('/')
 def home():
