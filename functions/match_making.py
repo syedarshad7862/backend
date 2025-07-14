@@ -207,7 +207,7 @@ def semantic_search_llm(matched_profiles, query_text):
         HumanMessage(content=combined_input)
     ]
     # pdb.set_trace()
-
+    print(f"query len {len(combined_input)}")
     result = gemini_model.invoke(messages)
     
     return result.content

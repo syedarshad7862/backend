@@ -15,7 +15,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 MONGO_URI = os.getenv("MONGO_URI")
-# print(MONGO_URI)
+print(MONGO_URI)
 # connect = MongoClient(MONGO_URI)
 client = AsyncIOMotorClient(MONGO_URI)
 agents_db = client["matrimony_agents"] # Common DB for storing agents

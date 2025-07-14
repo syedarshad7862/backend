@@ -82,4 +82,32 @@ async def approve_user_registration(username: str, admin= Depends(admin_required
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User '{username}' not found."
         )
+    
+    try:
+        db = database.client[f"{username}_matrimony"]
+        collection = db["user_profiles"]
+        # Fix invalid language values
+        await collection.update_many(
+            { "language": { "$exists": True } },
+            { "$set": { "language": "english" } }
+        )
+
+        # Create text index on key fields
+        await collection.create_index(
+            {
+                "full_name": "text",
+                "education": "text",
+                "gender": "text",
+                "marital_status": "text",
+                "height": "text",
+                "age": "text"
+            },
+            name="TextSearchIndex",
+            default_language="english"
+        )
+
+        print(f"✅ Index created and language cleaned for user DB: {db}")
+
+    except Exception as e:
+        print(f"❌ Index setup failed for user '{username}': {e}")
     return JSONResponse(status_code=200,content={"message": "User Approved Successfully"})

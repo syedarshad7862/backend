@@ -1,8 +1,9 @@
-from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request
+from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request, Query
 from fastapi.responses import JSONResponse
 from database import database
 from models import schemas
 from bson import ObjectId
+from pymongo.errors import OperationFailure
 from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
 
@@ -134,4 +135,25 @@ async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_au
         )
     profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
     return JSONResponse(status_code=200, content={"messeage": "profile deleted"})
-    
+
+@router.get("/search")
+async def search_profiles(
+    query: str,
+    db=Depends(get_authenticated_agent_db)
+):
+    try:
+        user, db = db
+        cursor = db["user_profiles"].find(
+            { "$text": { "$search": query } },
+            { "score": { "$meta": "textScore" } }
+        ).sort([("score", { "$meta": "textScore" })]).limit(2)
+
+        results = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            results.append(doc)
+
+        return {"results": results}
+    except Exception as e:
+        print(f"Unexpected Error: {e}")  # Log the error
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
