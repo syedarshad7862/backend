@@ -20,10 +20,10 @@ MONGO_URI = os.getenv("MONGO_URI")
 async def find_matches(request: Request,user_db=Depends(get_authenticated_agent_db)):
     try:
         user, db = user_db
-        profiles = await db["user_profiles"].find({}, {"_id": 0, "full_name": 1, "profile_id": 1}).to_list(length=None)
+        profiles = await db["user_profiles"].find({}, {"_id": 1, "full_name": 1, "profile_id": 1}).to_list(length=None)
         # profiles = await db["user_profiles"].find({}).limit(50).to_list(length=50)
-        # for profile in profiles:
-        #     profile['_id'] = str(profile['_id'])
+        for profile in profiles:
+            profile['_id'] = str(profile['_id'])
     
         return JSONResponse(status_code=status.HTTP_200_OK, content={"profiles": profiles})
     except Exception as e:
