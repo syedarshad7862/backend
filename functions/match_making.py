@@ -211,4 +211,3 @@ def semantic_search_llm(matched_profiles, query_text):
     result = gemini_model.invoke(messages)
     
     return result.content
-

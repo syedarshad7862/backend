@@ -53,7 +53,8 @@ async def show_matches(
         if not selected_profile:
             return JSONResponse(status_code=404, content={"error": "Profile not found"})
         profile_id = selected_profile.get("profile_id", "profile_id")
-        print(f"full_name: {profile_id}")
+        full_name = selected_profile.get("full_name", "full_name")
+        print(f"profile_id and full_name: {profile_id}, {full_name}")
         chunk_start = time.time()
         # function for dataframe & chunks
         texts ,profile_df = await chunks.create_chunks(MONGO_URI,db.name,"user_profiles")
@@ -62,7 +63,7 @@ async def show_matches(
         # print(profile_df)
         # pdb.set_trace()
         vector_start = time.time()
-        matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,profile.top)
+        matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,full_name,profile.top)
         print(f"Time for vectors search: {time.time() - vector_start:.2f} sec")
         if matched_profiles.empty:
             print("No Matches found!")

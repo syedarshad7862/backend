@@ -10,10 +10,10 @@ load_dotenv()
 def normalize_embeddings(embeddings):
     return embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
-def extract_indices_from_vector(df, profile_id,top_k):
+def extract_indices_from_vector(df, profile_id,full_name,top_k):
     
     # Get user profile
-    user_profile = df[df["profile_id"] == profile_id]
+    user_profile = df[(df["profile_id"] == profile_id) & (df["full_name"] == full_name)]
     if user_profile.empty:
         return pd.DataFrame(), "❌ User not found."
     print(f"username find in {user_profile}")

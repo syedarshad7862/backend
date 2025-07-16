@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request, Query
+from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from database import database
 from models import schemas
@@ -6,13 +6,16 @@ from bson import ObjectId
 from pymongo.errors import OperationFailure
 from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
-
+import os
 app = FastAPI()
 
 router = APIRouter(
     prefix='/profile',
     tags=['Profile']
     )
+
+UPLOAD_DIR = "uploads"  # Directory to store uploaded PDFs
+os.makedirs(UPLOAD_DIR, exist_ok=True)  # Create folder if not exists
 
 @router.post("/create-profile")
 async def create_profile( profile : schemas.ProfileCreate,user_db= Depends(get_authenticated_agent_db)):
@@ -157,3 +160,22 @@ async def search_profiles(
     except Exception as e:
         print(f"Unexpected Error: {e}")  # Log the error
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    
+
+# @router.post("/upload-pdf")
+# async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=Depends(get_authenticated_agent_db)):
+#     file_location = f'{UPLOAD_DIR}/{file.filename}'
+#     # with open(file_location, "wb") as buffer:
+#     #     file_contants = await file.read()
+#     #     print(file_contants)
+#     #     buffer.write(file_contants)
+        
+#     # extracted_text = extract_text_from_pdf(file)
+#     user, db = user_db
+#     previous_id = await db["user_profiles"].count_documents({})
+#     # format_data = {
+#     #     "profile_id": previous_id+1,
+#     #     "unstracture": extracted_text
+#     #     }
+#     added = await db["user_profiles"].insert_one(format_data)
+#     return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully."})
