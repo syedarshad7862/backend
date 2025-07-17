@@ -179,3 +179,15 @@ async def search_profiles(
 #     #     }
 #     added = await db["user_profiles"].insert_one(format_data)
 #     return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully."})
+
+
+@router.get("/full-details")
+async def full_profile(profile_id: int, user_db = Depends(get_authenticated_agent_db)):
+    user, db = user_db
+    profile = await db["user_profiles"].find_one({"profile_id": profile_id})
+    if not profile:
+        return JSONResponse(status_code=404, content={"error": "Profile not found"})
+    # Convert ObjectId to str
+    profile["_id"] = str(profile["_id"])
+    print(profile)
+    return  JSONResponse(status_code=200, content={"profile": profile}) # FastAPI will return JSON
