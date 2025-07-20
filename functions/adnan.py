@@ -8,7 +8,6 @@ from io import BytesIO
 from datetime import datetime
 from dateutil.parser import parse
 import pdb
-from concurrent.futures import ThreadPoolExecutor
 
 # Define key mappings for extracting variations of fields
 KEY_MAPPINGS = {
@@ -21,18 +20,17 @@ KEY_MAPPINGS = {
     "complexion": ["complexion", "skin_tone", "skin tone"],
     "education": ["education", "qualification", "degree", "Educational Background"],
     "occupation": ["profession", "job", "profession Details", "Work", "current job", "occupation", "current position"],
-    "father_name": ["father's name & occupation","Father’s Name", "father", "dad's name", "family details", "Father's Name"],
+    "father_name": ["father's name & occupation", "father", "dad's name", "family details", "Father's Name"],
     "father_occupation": [ "father's job", "father profession","Father's Name"],
     "mother_name": [ "mother name", "mom's name", "mother", "Mother's Name & Profession","Mother's Name"],
     "siblings": ["Sister's","siblings", "brothers and sisters", "family members","sister's"],
-    "residence": ["residence",  "current address", "living place", "current location", "Area"],
+    "residence": ["residence",  "current address", "living place", "current location"],
     "native_place": ["Current Location", "hometown", "birthplace", "nationality"],
     "mother_tongue": ["mother tongue", "first_language", "native language"],
     "visits_dargah": ["visits dargah", "dargah visits", "visits shrines"],
-    "religion": ["Religion"],
-    "sect": ["sect", "religious sect", "community", "Maslak", "Maslak Sect", "caste"],
+    "sect": ["sect", "religious sect", "community", "religion", "caste"],
     "preferences": ["partner preferences", "personality", "other traits", "religious expectation", "age range", "age preference", "education preference", "profession preference", "location preference", "religious & cultural values", "religious values", "height preferences","Expectations"],
-    "contact_no": ["Contact No's","Contact", "phone number", "mobile number", "Phone", "email", "Address", "email ID"]
+    "contact_no": ["Contact No's", "phone number", "mobile number", "Phone", "email", "Address", "email ID"]
 }
 
 
@@ -67,17 +65,16 @@ def display_images(list_dict_final_images):
         plt.axis("off")
         plt.show()
 
-def ocr_image(image_bytes):
-    image = Image.open(BytesIO(image_bytes)).convert("L")
-    return pytesseract.image_to_string(image, lang="eng")
-
 def extract_text_with_pytesseract(list_dict_final_images):
     image_list = [list(data.values())[0] for data in list_dict_final_images]
-
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(ocr_image, image_list))
-
-    return "\n".join(results)
+    image_content = []
+    
+    for image_bytes in image_list:
+        image = Image.open(BytesIO(image_bytes))
+        raw_text = str(pytesseract.image_to_string(image))
+        image_content.append(raw_text)
+    
+    return "\n".join(image_content)
 
 def extract_birth_year(text):
     """
@@ -180,3 +177,14 @@ def save_dict_to_file(data, filename="profile_data.py"):
 #     save_dict_to_file(profile, "profile_data.py")
 #     print("Profile data saved to profile_data.py")  #very good
     
+
+# pdf_images = convert_pdf_to_images(r"c:\Users\ThinkPad\Desktop\python projects\pdfs\00000072-MATRIMONIAL BIO DATA-2.pdf")
+#     # pdb.set_trace()
+#     display_images(pdf_images)
+#     extracted_text = extract_text_with_pytesseract(pdf_images)
+#     save_text_to_file(extracted_text, "extracted_text.txt")
+#     print("Extracted text saved to extracted_text.txt")
+
+#     profile = extract_profile_data(extracted_text)
+#     save_dict_to_file(profile, "profile_data.py")
+#     print("Profile data saved to profile_data.py") 

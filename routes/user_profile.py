@@ -6,7 +6,11 @@ from bson import ObjectId
 from pymongo.errors import OperationFailure
 from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
+from pymongo.errors import DuplicateKeyError
 import os
+from functions.extract_text_from_pdf import convert_pdf_to_images,extract_text_with_pytesseract,extract_profile_data
+import logging
+logger = logging.getLogger(__name__)
 app = FastAPI()
 
 router = APIRouter(
@@ -18,7 +22,7 @@ UPLOAD_DIR = "uploads"  # Directory to store uploaded PDFs
 os.makedirs(UPLOAD_DIR, exist_ok=True)  # Create folder if not exists
 
 @router.post("/create-profile")
-async def create_profile( profile : schemas.ProfileCreate,user_db= Depends(get_authenticated_agent_db)):
+async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_authenticated_agent_db)):
     try:
         user, db = user_db  # Unpack user & database from function
         previous_id = await db["user_profiles"].count_documents({})
@@ -166,18 +170,19 @@ async def search_profiles(
 # async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=Depends(get_authenticated_agent_db)):
 #     file_location = f'{UPLOAD_DIR}/{file.filename}'
 #     # with open(file_location, "wb") as buffer:
-#     #     file_contants = await file.read()
+#         # file_contants = await file.read()
 #     #     print(file_contants)
 #     #     buffer.write(file_contants)
-        
+#     file_contants = file.read() 
+#     print(file_contants)
 #     # extracted_text = extract_text_from_pdf(file)
 #     user, db = user_db
-#     previous_id = await db["user_profiles"].count_documents({})
+#     # previous_id = await db["user_profiles"].count_documents({})
 #     # format_data = {
 #     #     "profile_id": previous_id+1,
 #     #     "unstracture": extracted_text
 #     #     }
-#     added = await db["user_profiles"].insert_one(format_data)
+#     # added = await db["user_profiles"].insert_one(format_data)
 #     return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully."})
 
 
@@ -191,3 +196,48 @@ async def full_profile(profile_id: int, user_db = Depends(get_authenticated_agen
     profile["_id"] = str(profile["_id"])
     print(profile)
     return  JSONResponse(status_code=200, content={"profile": profile}) # FastAPI will return JSON
+    
+    
+
+@router.post("/upload-pdf")
+async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=Depends(get_authenticated_agent_db)):
+    try:    
+        file_contants = await file.read() 
+        user, db = user_db
+        try:
+            images_data = convert_pdf_to_images(file_contants,scale=300/72)
+        except Exception as e:
+            print(f"error logs {e}")
+            return JSONResponse(status_code=500, content={"error": f"PDF rendering failed: {str(e)}"})
+        
+        try:
+            extracted_text = extract_text_with_pytesseract(images_data)
+            print(extracted_text)
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"error": f"OCR failed: {str(e)}"})
+        
+        result = None
+        try:
+            # await db["user_profiles"].create_index("profile_id", unique=True)
+            profile_data = extract_profile_data(extracted_text)
+            result = await db["user_profiles"].insert_one(profile_data)
+            print(result)
+            profile_id = str(result.inserted_id)[-6:].lower()
+            # chars = string.ascii_lowercase + string.digits
+            # unique_id = f"USR-{''.join(random.choices(chars, k=6))}"
+            # print(f" u id : {unique_id}")
+            await db["user_profiles"].update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"profile_id": profile_id}}
+            )
+            
+            return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully."})
+        except DuplicateKeyError:
+            if result:
+                await db["user_profiles"].delete_one({"_id": result.inserted_id})
+            raise HTTPException(status_code=409, detail="Profile ID conflict. Try again.")
+    except Exception as e:
+        if result:
+            await db["user_profiles"].delete_one({"_id": result.inserted_id})
+        logger.error(f"Create profile failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")

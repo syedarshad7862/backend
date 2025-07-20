@@ -1,17 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import SystemMessage, HumanMessage
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-def semantic_search_llm(matched_profiles, query_text):
-    
-    gemini_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-    
-    combined_input = (
-        f"""Your role: You are an Expert matchmaking assistant specialised in Muslim marriages.
+prompt = """Your role: You are an Expert matchmaking assistant specialised in Muslim marriages.
 
             Your objective: To provide accurate, ethical, and structured matchmaking that aligns with Islamic principles while ensuring fairness and transparency in the scoring process. You will evaluate potential matches against a user profile and provide a deterministic match score based on the detailed rules below.
 
@@ -193,22 +180,7 @@ def semantic_search_llm(matched_profiles, query_text):
             - Reasoning: <Explain why this profile was selected and the key points of compatibility.>
             - Points to Consider: <If the score is below 85%, explain the primary reasons for the score reduction (e.g., "While education and age are a good match, the potential match lives in a different country and has no specified preference for your location.")>
             - Compatibility: <based on match score%>%
-            ---
-            Following is the user profile (in key:value format) for which the match has to be found:
-                {query_text}
-            Following are the potential matches for the above profile:
-            {chr(10).join(matched_profiles["bio"].tolist())}
-            """
+            ---"""
             
-        )
-    
-    
-    messages = [
-        SystemMessage(content="You are an AI assistant that helps match profiles for a matrimonial platform."),
-        HumanMessage(content=combined_input)
-    ]
-    # pdb.set_trace()
-    print(f"query len {len(combined_input)}")
-    result = gemini_model.invoke(messages)
-    
-    return result.content
+
+print(f"query len: {len(prompt.strip())}")

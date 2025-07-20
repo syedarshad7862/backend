@@ -4,7 +4,7 @@ profile_data = {
     "marital_status": "",
     "age": "45",
     "dob": "1980",
-    "height": "5' 6"",
+    "height": "5' 6",
     "complexion": "",
     "education": "BE (Mechanical Design Engineer)",
     "occupation": "TechnipFMC, Hitech city",
