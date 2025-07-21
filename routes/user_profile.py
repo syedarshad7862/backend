@@ -147,12 +147,11 @@ async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_au
 async def search_profiles(
     query: str,
     page: int = 1,
-    limit: int = 10,
     db=Depends(get_authenticated_agent_db)
 ):
     try:
         user, db = db
-        
+        limit = 6,
         skip = (page - 1) * limit
         
         cursor = db["user_profiles"].find(
