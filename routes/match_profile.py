@@ -62,6 +62,8 @@ async def show_matches(
         
         # print(profile_df)
         # pdb.set_trace()
+        # profile, text = search_profile(profile_df,"unmarried Muslim females in Hyderabad aged 24",5)
+        # print(f"search results: {profile}, {text}")
         vector_start = time.time()
         matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,full_name,profile.top)
         print(f"Time for vectors search: {time.time() - vector_start:.2f} sec")

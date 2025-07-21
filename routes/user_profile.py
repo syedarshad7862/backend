@@ -146,14 +146,19 @@ async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_au
 @router.get("/search")
 async def search_profiles(
     query: str,
+    page: int = 1,
+    limit: int = 10,
     db=Depends(get_authenticated_agent_db)
 ):
     try:
         user, db = db
+        
+        skip = (page - 1) * limit
+        
         cursor = db["user_profiles"].find(
             { "$text": { "$search": query } },
             { "score": { "$meta": "textScore" } }
-        ).sort([("score", { "$meta": "textScore" })]).limit(2)
+        ).sort([("score", { "$meta": "textScore" })]).skip(skip).limit(limit)
 
         results = []
         async for doc in cursor:
@@ -231,7 +236,7 @@ async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=
                 {"$set": {"profile_id": profile_id}}
             )
             
-            return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully."})
+            return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully.", "profile_id": profile_id, "_id":result.inserted_id})
         except DuplicateKeyError:
             if result:
                 await db["user_profiles"].delete_one({"_id": result.inserted_id})

@@ -36,10 +36,32 @@ async def approve_user_in_db(username: str) -> Optional[UserInfo]:
     )
 
 
-@router.get("/dashboard")
-def admin_dashboard(admin: dict = Depends(admin_required)):
-    print(admin)
-    return JSONResponse(status_code=200, content={"message": "Well come to the admin dashboard."}) 
+@router.get("/dashboard", response_model=List[UserInfo])
+async def admin_dashboard(admin: dict = Depends(admin_required)):
+    """
+    Endpoint to list all users in the system.
+    Only accessible by administrators.
+    """
+    print(f"Admin '{admin['agent_username']}' is accessing the user list.")
+    
+    # Replace with your actual MongoDB collection
+    users_cursor = database.agents_collection.find()  # e.g., db["users"]
+    users = await users_cursor.to_list(length=None)
+
+    # Convert MongoDB documents to Pydantic model
+    user_list = [
+        UserInfo(
+            agent_id=str(user.get("_id", "")),
+            username=user.get("username", ""),
+            email=user.get("email", ""),
+            status=user.get("status", ""),
+            role=user.get("role", "")
+        )
+        for user in users
+        if user.get("role", "") == "user"
+    ]
+
+    return user_list
 
 @router.get("/users", response_model=List[UserInfo])
 async def list_users_for_admin(admin: dict = Depends(admin_required)):
@@ -100,7 +122,8 @@ async def approve_user_registration(username: str, admin= Depends(admin_required
                 "gender": "text",
                 "marital_status": "text",
                 "height": "text",
-                "age": "text"
+                "age": "text",
+                "preferences": "text"
             },
             name="TextSearchIndex",
             default_language="english"
