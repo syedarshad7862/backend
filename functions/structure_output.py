@@ -29,7 +29,8 @@ def transform_llm_response(llm_response):
     
     # Define a model for each match
     class Match(BaseModel):
-        profile_id: int = Field(description="Exctract Profile Id")
+        object_id: str = Field(description="The object-id (a separate database id that is NOT the same as the profile-id")
+        profile_id: int = Field(description="Exctract Profile_id")
         match_score: str = Field(description="Exctract Match Score")
         name: str = Field(description="Extract the Match Name.")
         score_breakdown: ScoreBreakdown

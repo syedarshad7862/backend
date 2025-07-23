@@ -186,6 +186,7 @@ def semantic_search_llm(matched_profiles, query_text):
             Structure your response *exactly* in this format for each recommended match (score >= 50%):
 
             Match: <Matched Name> And Profile Id: <Profile ID>
+            Object Id: <Mongo _id as hex string / object-id>
             Match Score: <Final Score %>%
             Score Breakdown:
             - Mutual Preferences & Compatibility: <(Achieved_A / 50) * 100 %>%

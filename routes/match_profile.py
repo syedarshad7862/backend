@@ -67,6 +67,7 @@ async def show_matches(
         vector_start = time.time()
         matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,full_name,profile.top)
         print(f"Time for vectors search: {time.time() - vector_start:.2f} sec")
+        # print(matched_profiles)
         if matched_profiles.empty:
             print("No Matches found!")
             return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "No Matches Found!"})

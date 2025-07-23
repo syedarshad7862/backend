@@ -52,7 +52,8 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
     )
     
     df["bio"] = (
-        df["profile_id"].astype(str) + " \n" +
+        "object-id: "+ " " + df["_id"].astype(str) + " \n" +
+        "profile_id: "+ " " + df["profile_id"].astype(str) + " \n" +
         df["full_name"].astype(str) + " \n" +
         "Date Of Birth: "+ " " + df["date_of_birth"].astype(str) + " \n" +
         "Age: "+ " " + df["age"].astype(str) + " \n" +
@@ -77,7 +78,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
         "Preferred Maslak_sect: "+ " " + df["pref_maslak_sect"].astype(str) + " \n" +
         "Preferred location: "+ " " + df["pref_location"].astype(str)
     )
-
+    # print(df["bio"])
     # Convert the combined text to a list
     texts = df["text"].tolist()
     return texts,df

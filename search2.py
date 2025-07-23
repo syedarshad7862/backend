@@ -17,8 +17,43 @@ KEYWORDS: Dict[str, Dict[str, list[str]]] = {
         "hyderabad": ["hyderabad", "hyd"],
         "mumbai":    ["mumbai", "bombay", "bom"],
         "bangalore": ["bangalore", "bengaluru", "blr"],
-        "delhi":     ["delhi", "new delhi"]
-    }
+        "delhi":     ["delhi", "new delhi"],
+        "canada": ["canada","Canada"]
+    },
+    
+    "education": {
+    # MBBS / medical
+    "mbbs":      ["mbbs", "m.b.b.s", "m b b s", "bachelor of medicine", "bachelor of medicine & surgery", "mbchb", "md", "doctor of medicine"],
+
+    # engineering
+    "b.e":       ["b.e", "be", "bachelor of engineering", "b.tech", "btech", "bachelor of technology", "m.e", "me", "m.tech", "mtech"],
+    "b.tech":       ["bachelor of engineering", "b.tech", "btech", "bachelor of technology", "B.tech", "btech","B-tech"],
+
+    # commerce
+    "b.com":     ["b.com", "bcom", "bachelor of commerce", "m.com", "mcom", "master of commerce"],
+
+    # science
+    "b.sc":      ["b.sc", "bsc", "bachelor of science", "m.sc", "msc", "master of science"],
+
+    # business administration
+    "bba":       ["bba", "bachelor of business administration", "mba", "master of business administration"],
+
+    # arts / humanities
+    "ba":        ["ba", "b.a", "bachelor of arts", "m.a", "ma", "master of arts"],
+
+    # pharmacy
+    "b.pharm":   ["b.pharm", "bpharm", "bachelor of pharmacy"],
+
+    # computer applications
+    "bca":       ["bca", "bachelor of computer applications", "mca", "master of computer applications"],
+
+    # diploma / polytechnic
+    "diploma":   ["diploma", "polytechnic", "poly"]
+},
+"marital_status":{
+        "single": ["Single", "single"],
+        "Unmarried": ["Unmarried", "Unmarried"]
+    },
 }
 
 STOP_WORDS = {"in", "from", "at", "a", "an", "the", "with", "degree", "all", "and", "of"}
@@ -43,51 +78,40 @@ profiles = db["user_profiles"]
 # 3.  Query parser → MongoDB filter
 # ------------------------------------------------------------------
 # def build_mongo_filter(query: str) -> Dict[str, Any]:
-#     """
-#     Convert a free-text query such as
-#         'female bcom in hyd'
-#     into a MongoDB filter dict.
-#     """
-#     if not query.strip():
-#         return {}
-
-#     # normalise string
 #     query = query.lower()
-#     words = [w for w in re.split(r"[,\s]+", query) if w and w not in STOP_WORDS]
+#     tokens = [w for w in re.split(r"[,\s]+", query) if w and w not in STOP_WORDS]
 
-#     # containers for strict and free terms
-#     strict: Dict[str, Any] = {}
-#     free_terms: list[str] = []
+#     filt: Dict[str, Any] = {}
 
-#     # parse known keywords
-#     for w in words:
-#         matched = False
+#     # 1.  recognise keywords
+#     for tok in tokens:
 #         for field, mapping in KEYWORDS.items():
-#             # do not overwrite once set
-#             if field in strict:
-#                 continue
 #             for canonical, aliases in mapping.items():
-#                 if w in aliases:
-#                     strict[field] = re.compile(re.escape(canonical), re.IGNORECASE)
-#                     matched = True
+#                 if tok in aliases:
+#                     # substring, case-insensitive
+#                     pat = "|".join(map(re.escape, aliases))
+#                     filt[field] = {"$regex": pat, "$options": "i"}
 #                     break
-#             if matched:
-#                 break
-#         if not matched:
-#             free_terms.append(re.escape(w))
 
-#     # Build the final filter
-#     mongo_filter: Dict[str, Any] = strict.copy()
+#     # 2.  remaining tokens (age, unknown)
+#     known = {alias for m in KEYWORDS.values()
+#              for lst in m.values() for alias in lst}
+#     extra = [t for t in tokens if t not in known]
 
-#     if free_terms:
-#         # one $text query for all unknown terms
-#         if "gender" not in strict:
-#             mongo_filter["$text"] = {"$search": " ".join(free_terms)}
-#         # mongo_filter["$text"] = {"$search": " ".join(free_terms)}
-#         # Optional: add a score sort
-#         # mongo_filter["$meta"] = "textScore"
+#     ors = []
+#     for tok in extra:
+#         if tok.isdigit():
+#             filt["age"] = {"$regex": tok, "$options": "i"}
+#         else:
+#             ors.extend([
+#                 {"education": {"$regex": tok, "$options": "i"}},
+#                 {"skills":    {"$regex": tok, "$options": "i"}}
+#             ])
+#     ors = [o for o in ors if o]
+#     if ors:
+#         filt["$or"] = ors
 
-#     return mongo_filter
+#     return filt
 
 def build_mongo_filter(query: str) -> Dict[str, Any]:
     query = query.lower()
@@ -100,10 +124,14 @@ def build_mongo_filter(query: str) -> Dict[str, Any]:
         for field, mapping in KEYWORDS.items():
             for canonical, aliases in mapping.items():
                 if tok in aliases:
-                    # case-insensitive exact OR substring match
-                    # filt[field] = {"$regex": f".*{re.escape(canonical)}.*", "$options": "i"}
-                    filt[field] = {"$regex": f"^{re.escape(canonical)}$", "$options": "i"}
-                    break
+                    if field in ("gender", "native_place"):
+                        filt[field] = {"$regex": f"^{re.escape(canonical)}$", "$options": "i"}
+                    else:
+                        alias_pattern = "|".join(map(re.escape, aliases))
+                        filt[field] = {"$regex": alias_pattern, "$options": "i"}
+                        break
+                
+
 
     # 2.  handle free terms (age, education, etc.) the same way
     #     skip gender & location – they were already handled
@@ -117,8 +145,8 @@ def build_mongo_filter(query: str) -> Dict[str, Any]:
         ors = []
         for f in free:
             ors.extend([
-                {"education": {"$regex": f, "$options": "i"}},
-                {"skills":    {"$regex": f, "$options": "i"}},
+                {"education": {"$regex": f"\\b{re.escape(f)}\\b", "$options": "i"}},
+                {"residence":    {"$regex": f"\\b{re.escape(f)}\\b", "$options": "i"}},
                 {"age": {"$regex": f"^{re.escape(f)}$", "$options": "i"}} if f.isdigit() else {}
             ])
         ors = [o for o in ors if o]
@@ -147,12 +175,18 @@ def build_mongo_filter(query: str) -> Dict[str, Any]:
 #     return {"count": len(docs), "results": docs}
 
 
-filter_dict = build_mongo_filter('male age 25 in hyderabad mbbs')
+filter_dict = build_mongo_filter('male canada')
+page = 1
+limit = 6                       # no comma
+skip_ = (page - 1) * limit
+
 cursor = (
-        profiles
-        .find(filter_dict, {"_id": 0})
-        .limit(20)          # basic safety
+    profiles
+    .find(filter_dict)          # include _id by default
+    .skip(skip_)
+    .limit(limit)
 )
+
 docs = list(cursor)
 print(filter_dict)
 print(f'"count": {len(docs)}, "results": {docs}')
