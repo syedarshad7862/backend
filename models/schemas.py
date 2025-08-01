@@ -50,6 +50,7 @@ class ProfileCreate(BaseModel):
     father_name: Optional[str] = None
     mother_name: Optional[str] = None
     religious_practice: str
+    contact_no: str
     preferences: str
     pref_age_range: str
     pref_marital_status: str
@@ -84,6 +85,7 @@ class UpdateProfileRequest(BaseModel):
     father_name: str | None = None
     mother_name: str | None = None
     religious_practice: str | None = None
+    contact_no: str | None = None
     preferences: str | None = None
     pref_age_range: str | None = None
     pref_marital_status: str | None = None

@@ -22,6 +22,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
             df[field] = "unknown"
     # pk
     df["text"] = (
+        "object-id: "+ " " + df["_id"].astype(str) + " \n" +
         "Name"+" " + df["full_name"].astype(str) + " \n" +
         "Date Of Birth: "+ " " + df["date_of_birth"].astype(str) + " \n" +
         "Age: "+ " " + df["age"].astype(str) + " \n" +
@@ -54,7 +55,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
     df["bio"] = (
         "object-id: "+ " " + df["_id"].astype(str) + " \n" +
         "profile_id: "+ " " + df["profile_id"].astype(str) + " \n" +
-        df["full_name"].astype(str) + " \n" +
+        "Full Name: "+ " " + df["full_name"].astype(str) + " \n" +
         "Date Of Birth: "+ " " + df["date_of_birth"].astype(str) + " \n" +
         "Age: "+ " " + df["age"].astype(str) + " \n" +
         "Gender: "+ " " + df["gender"].astype(str) + " \n" +

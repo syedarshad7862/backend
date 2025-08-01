@@ -25,17 +25,16 @@ async def get_register(user: schemas.UserCreate):
     "status": user.status,
     "created_at": datetime.datetime.now(datetime.timezone.utc)
     }
-    print(MONGO_URI)
     if await database.agents_collection.find_one({'username':agent_data["username"]}):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered",
+            detail="User already registered",
         )
     
     if await database.agents_collection.find_one({'email':agent_data['email']}):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="User already registered",
         )
     new_agent = await database.agents_collection.insert_one(agent_data)
     return JSONResponse(status_code=200, content={'message': 'User Created Successfully.'})

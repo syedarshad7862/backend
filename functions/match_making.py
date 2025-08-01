@@ -2,7 +2,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import SystemMessage, HumanMessage
 from dotenv import load_dotenv
 import os
-
+import time
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -23,7 +23,8 @@ def semantic_search_llm(matched_profiles, query_text):
             2.  **Primary vs. Fallback Logic:** For each criterion, the primary scoring logic is based on a stated 'Preferred' value. **If, and only if, a 'Preferred' value is not specified (i.e., it is null, nan, or empty), you must use the "Fallback Logic"** which compares the actual values of the two profiles.
             3.  **Missing Actual Data:** If data required for a calculation is missing from *both* the preference fields and the actual fields (e.g., both `Preferred Height` and the user's actual `height` are unknown), that specific criterion scores 0 points.
             4.  **Name Exclusion:** The 'Name' field is for identification only and must not be used for scoring.
-            5.  **Date/Age Calculation:** If age is not directly provided, calculate it from the 'Date of Birth' field against the current date.
+            5.  **Date/Age Calculation:** If age is not directly provided, calculate it from the 'Date of Birth' field against the current date {(time.ctime())}.
+            6. Preferred keys are None: This means the user has no specific preference. For example, if pref_height is None, it indicates they are open to matches of any height — this acts as a fallback option.
 
             ---
 
@@ -48,7 +49,7 @@ def semantic_search_llm(matched_profiles, query_text):
                 * If the preference is **"Under 30"** or **"30-"**: This means the required age must be `less than or equal to 30` (age <= 30).
                 * If the preference is **"25-30"**: This means the required age must be `between 25 and 30, inclusive` (25 <= age <= 30).
                 * If the preference is **"5'6\" - 5'10\""**: This means the required height must be `between 5.5 feet and 5.83 feet`.
-
+                **Note: Calculate date of birth from current date{(time.ctime())}. If Age Not Mention**
                 Always perform this conversion before awarding any points.
 
             **III. Scoring Algorithm (Total Score: 100 points)**
@@ -61,7 +62,7 @@ def semantic_search_llm(matched_profiles, query_text):
             **Note: If the preference is **"40+"**: This means the required age must be `greater than or equal to 40` (age >= 40).
             **1. Age Compatibility (Max: [15] points)**
                 * **Part A - User's Perspective (Max: 8 points):**
-                    **Note: Calculate date of birth from current date. If Age Not Mention**
+                    **Note: Calculate date of birth from current date {(time.ctime())}. If Age Not Mention**
                     * **If user's `Preferred Age Range`/`Preferences` is specified:**
                         * If potential's 'age' is within range: [8] points.
                         * If potential match's 'age' is outside by 1-2 years: [6] points.
@@ -69,7 +70,7 @@ def semantic_search_llm(matched_profiles, query_text):
                         * Otherwise: 0 points.
                 * **If user's `Preferred Age Range` is NOT specified (Fallback):**
                     * Compare actual ages:
-                    * If user match is male and 0–4 years older than potential, OR female and 0–3 years younger than potential: [5] points.
+                    * If user match is male and 0–5 years older than potential, OR female and 0–3 years younger than potential: [5] points.
                     * Compare actual ages: If potential match's `age` is 5-7 years older than user's `age`: [3] points.
                     * Otherwise: 0 points.
                 * **Part B - Potential's Perspective (Max: 7 points):**
@@ -78,9 +79,9 @@ def semantic_search_llm(matched_profiles, query_text):
                         * If outside by 1-2 years: [5] points.
                         * Otherwise: 0 points.
                 * **If potential's `Preferred Age Range` is NOT specified (Fallback):**
-                    **Note: Calculate date of birth from current date. If Age Not Mention**
+                    **Note: Calculate date of birth from current date {(time.ctime())}. If Age Not Mention**`
                     * Compare actual ages:
-                    * If potential match is male and 0–4 years older than user, OR female and 0–3 years younger than user: [5] points.
+                    * If potential match is male and 0–5 years older than user, OR female and 0–3 years younger than user: [5] points.
                     * Otherwise: 0 points.
 
             **2. Height Compatibility (Max: [10] points)**
@@ -213,3 +214,6 @@ def semantic_search_llm(matched_profiles, query_text):
     result = gemini_model.invoke(messages)
     
     return result.content
+
+
+# {chr(10).join(matched_profiles["bio"].tolist())}

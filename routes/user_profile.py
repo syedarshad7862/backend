@@ -12,6 +12,7 @@ from functions.extract_text_from_pdf import convert_pdf_to_images,extract_text_w
 import logging
 from typing import Any, Dict
 import re
+import datetime
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
@@ -42,9 +43,10 @@ async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_au
             "native_place": profile.native_place,
             "residence": profile.residence,
             "siblings": profile.siblings,
-            "father": profile.father_name,
-            "mother": profile.mother_name,
+            "father_name": profile.father_name,
+            "mother_name": profile.mother_name,
             'religious_practice': profile.religious_practice,
+            "contact_no": profile.contact_no,
             "preferences": profile.preferences,
             "pref_age_range": profile.pref_age_range,
             "pref_marital_status": profile.pref_marital_status,
@@ -59,8 +61,26 @@ async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_au
             "pref_go_to_dargah": profile.pref_go_to_dargah,
             "pref_maslak_sect": profile.pref_maslak_sect,
             "pref_deendari": profile.pref_deendari,
-            "pref_location": profile.pref_location
+            "pref_location": profile.pref_location,
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
+        
+
+        if await db["user_profiles"].find_one({'full_name': biodata["full_name"]}):
+            return HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Profile already exists",
+            )
+        if await db["user_profiles"].find_one({'father_name': biodata["father_name"]}):
+            return HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Profile already exists",
+            )
+        if await db["user_profiles"].find_one({'contact_no': biodata["contact_no"]}):
+            return HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Profile already exists",
+            )
         
         added = await db["user_profiles"].insert_one(biodata)
         if not added.inserted_id:
@@ -70,7 +90,7 @@ async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_au
         
     except Exception as e:
         print(f"Unexpected Error: {e}")  # Log the error
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+        return HTTPException(status_code=500, detail="An unexpected error occurred")
     
 
 @router.get("/get-profile/{profile_id}")
@@ -198,6 +218,8 @@ async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=
         try:
             # await db["user_profiles"].create_index("profile_id", unique=True)
             profile_data = extract_profile_data(extracted_text)
+            profile_data["row_text"] = extracted_text
+            print(profile_data)
             result = await db["user_profiles"].insert_one(profile_data)
             print(result)
             profile_id = str(result.inserted_id)[-6:].lower()
@@ -333,6 +355,7 @@ async def search_profiles(
         # ).sort([("score", { "$meta": "textScore" })]).skip(skip).limit(limit)
         
         filter_dict = build_mongo_filter(query)
+        print(filter_dict)
         cursor = (
             db["user_profiles"]
             .find(filter_dict)          # include _id by default

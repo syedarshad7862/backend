@@ -4,12 +4,13 @@ from auth.dependencies import get_authenticated_agent_db
 from models import schemas
 from bson import ObjectId
 from bson.errors import InvalidId
-from functions.generate_vectors import create_faiss_index
+from functions.generate_vectors import create_qdrant_indexes
 from functions import chunks,search_vector,match_making,structure_output
 import os
 from dotenv import load_dotenv
 import pdb
 import time
+import traceback
 load_dotenv()
 app = FastAPI()
 router = APIRouter(prefix='/match', tags=['Match'])
@@ -65,12 +66,13 @@ async def show_matches(
         # profile, text = search_profile(profile_df,"unmarried Muslim females in Hyderabad aged 24",5)
         # print(f"search results: {profile}, {text}")
         vector_start = time.time()
-        matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,full_name,profile.top)
+        # matched_profiles, query_text = search_vector.extract_indices_from_vector(profile_df,profile_id,full_name,profile.top)
+        matched_profiles, query_text = await search_vector.qdrant_search_profiles(profile_df,profile_id,full_name,profile.top)
         print(f"Time for vectors search: {time.time() - vector_start:.2f} sec")
         # print(matched_profiles)
-        if matched_profiles.empty:
-            print("No Matches found!")
-            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "No Matches Found!"})
+        # if matched_profiles.empty:
+        #     print("No Matches found!")
+        #     return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "No Matches Found!"})
         llm_start = time.time()
         llm_response = match_making.semantic_search_llm(matched_profiles, query_text)
         print(f"Time for LLM semantic search: {time.time() - llm_start:.2f} sec")
@@ -86,6 +88,7 @@ async def show_matches(
         return JSONResponse(status_code=status.HTTP_200_OK, content={"matche_profiles": matches})
     except Exception as e:
         print(f"Error logs: {e}")
+        traceback.print_exc()
         raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal servet error",
@@ -95,6 +98,7 @@ async def show_matches(
 async def generate_vectors(request: Request, user_db= Depends(get_authenticated_agent_db)):
     user, db = user_db
     print(f"database url: {MONGO_URI} user: {user}")
-    await create_faiss_index(MONGO_URI,db.name,"user_profiles")
+    # await create_faiss_index(MONGO_URI,db.name,"user_profiles")
+    await create_qdrant_indexes(MONGO_URI,db.name,"user_profiles")
     # print(MONGO_URI,db.name,"user_profiles")
     return {"message": "Created vectors successfully!"}
