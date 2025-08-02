@@ -6,6 +6,9 @@ import json
 from PIL import Image # Import Pillow for image manipulation
 import pytesseract # Import pytesseract for OCR
 import os # Import os for path manipulation
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # --- IMPORTANT: Ensure you have PyMuPDF, Pillow, and pytesseract installed:
@@ -317,7 +320,7 @@ input_path = r"c:\Users\ThinkPad\Desktop\python projects\pdfs\00000439-PHOTO-202
 # input_path = "/content/sample_biodata.jpg" # <--- Uncomment and change to your JPG path
 
 # Define your Groq API key
-api_key = "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"
+api_key = os.getenv("GROQ_API_KEY")
 
 # try:
 #     extracted_text = ""
