@@ -1,18 +1,22 @@
-from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request, UploadFile, File
+from fastapi import FastAPI, APIRouter,status,HTTPException,Depends,Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
-from database import database
+# from database import database
 from models import schemas
 from bson import ObjectId
-from pymongo.errors import OperationFailure
+import json
 from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
 from pymongo.errors import DuplicateKeyError
 import os
-from functions.extract_text_from_pdf import convert_pdf_to_images,extract_text_with_pytesseract,extract_profile_data
+from os.path import splitext
+from functions.extract_text_from_pdf import extract_text_from_image,extract_text_from_pdf,send_to_llama,safe_parse_dict
 import logging
 from typing import Any, Dict
 import re
 import datetime
+import tempfile
+from cloudinary.exceptions import Error as CloudinaryError
+from cloudinary.uploader import upload as cloudinary_upload
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
@@ -24,73 +28,123 @@ router = APIRouter(
 UPLOAD_DIR = "uploads"  # Directory to store uploaded PDFs
 os.makedirs(UPLOAD_DIR, exist_ok=True)  # Create folder if not exists
 
-@router.post("/create-profile")
-async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_authenticated_agent_db)):
-    try:
-        user, db = user_db  # Unpack user & database from function
-        previous_id = await db["user_profiles"].count_documents({})
-        biodata = {
-            "profile_id": previous_id+1,
-            "full_name": profile.full_name,
-            "age": profile.age,
-            "gender": profile.gender,
-            "marital_status": profile.marital_status,
-            "complexion": profile.complexion,
-            "height": profile.height,
-            "education": profile.education,
-            "maslak_sect": profile.maslak_sect,
-            "occupation": profile.occupation,
-            "native_place": profile.native_place,
-            "residence": profile.residence,
-            "siblings": profile.siblings,
-            "father_name": profile.father_name,
-            "mother_name": profile.mother_name,
-            'religious_practice': profile.religious_practice,
-            "contact_no": profile.contact_no,
-            "preferences": profile.preferences,
-            "pref_age_range": profile.pref_age_range,
-            "pref_marital_status": profile.pref_marital_status,
-            "pref_height": profile.pref_height,
-            "pref_complexion": profile.pref_complexion,
-            "pref_education": profile.pref_education,
-            "pref_work_job": profile.pref_work_job,
-            "pref_father_occupation": profile.pref_father_occupation,
-            "pref_no_of_siblings": profile.pref_no_of_siblings,
-            "pref_native_place": profile.pref_native_place,
-            "pref_mother_tongue": profile.pref_mother_tongue,
-            "pref_go_to_dargah": profile.pref_go_to_dargah,
-            "pref_maslak_sect": profile.pref_maslak_sect,
-            "pref_deendari": profile.pref_deendari,
-            "pref_location": profile.pref_location,
-            "created_at": datetime.datetime.now(datetime.timezone.utc)
-        }
+# @router.post("/create-profile")
+# async def create_profile( profile: schemas.ProfileCreate,user_db= Depends(get_authenticated_agent_db)):
+#     try:
+#         user, db = user_db  # Unpack user & database from function
+#         previous_id = await db["user_profiles"].count_documents({})
+#         biodata = {
+#             "profile_id": previous_id+1,
+#             "full_name": profile.full_name,
+#             "age": profile.age,
+#             "gender": profile.gender,
+#             "marital_status": profile.marital_status,
+#             "complexion": profile.complexion,
+#             "height": profile.height,
+#             "education": profile.education,
+#             "maslak_sect": profile.maslak_sect,
+#             "occupation": profile.occupation,
+#             "native_place": profile.native_place,
+#             "residence": profile.residence,
+#             "siblings": profile.siblings,
+#             "father_name": profile.father_name,
+#             "mother_name": profile.mother_name,
+#             'religious_practice': profile.religious_practice,
+#             "contact_no": profile.contact_no,
+#             "preferences": profile.preferences,
+#             "pref_age_range": profile.pref_age_range,
+#             "pref_marital_status": profile.pref_marital_status,
+#             "pref_height": profile.pref_height,
+#             "pref_complexion": profile.pref_complexion,
+#             "pref_education": profile.pref_education,
+#             "pref_work_job": profile.pref_work_job,
+#             "pref_father_occupation": profile.pref_father_occupation,
+#             "pref_no_of_siblings": profile.pref_no_of_siblings,
+#             "pref_native_place": profile.pref_native_place,
+#             "pref_mother_tongue": profile.pref_mother_tongue,
+#             "pref_go_to_dargah": profile.pref_go_to_dargah,
+#             "pref_maslak_sect": profile.pref_maslak_sect,
+#             "pref_deendari": profile.pref_deendari,
+#             "pref_location": profile.pref_location,
+#             "created_at": datetime.datetime.now(datetime.timezone.utc)
+#         }
         
 
-        if await db["user_profiles"].find_one({'full_name': biodata["full_name"]}):
-            return HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Profile already exists",
-            )
-        if await db["user_profiles"].find_one({'father_name': biodata["father_name"]}):
-            return HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Profile already exists",
-            )
-        if await db["user_profiles"].find_one({'contact_no': biodata["contact_no"]}):
-            return HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Profile already exists",
-            )
+#         if await db["user_profiles"].find_one({'full_name': biodata["full_name"]}):
+#             return HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Profile already exists",
+#             )
+#         if await db["user_profiles"].find_one({'father_name': biodata["father_name"]}):
+#             return HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Profile already exists",
+#             )
+#         if await db["user_profiles"].find_one({'contact_no': biodata["contact_no"]}):
+#             return HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Profile already exists",
+#             )
         
+#         added = await db["user_profiles"].insert_one(biodata)
+#         if not added.inserted_id:
+#             raise HTTPException(status_code=500, detail="Failed to add profile to the database")
+        
+#         return JSONResponse(status_code=status.HTTP_200_OK, content={'message': 'Profile Created Successfully'})
+        
+#     except Exception as e:
+#         print(f"Unexpected Error: {e}")  # Log the error
+#         return HTTPException(status_code=500, detail="An unexpected error occurred")
+    
+
+@router.post("/create-profile")
+async def create_profile(
+    profile: str = Form(...),  # JSON string
+    profile_image: UploadFile = File(None),
+    user_db=Depends(get_authenticated_agent_db)
+):
+    try:
+        # ✅ Parse JSON string to Pydantic model
+        try:
+            profile_data = schemas.ProfileCreate(**json.loads(profile))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid profile data: {e}")
+        image_url = None
+        if profile_image:
+            # ✅ Upload image to Cloudinary
+            try:
+                result = cloudinary_upload(profile_image.file, folder="matrimony_profiles")
+                image_url = result.get("secure_url")
+                print(f"image_url {image_url}")
+            except CloudinaryError as e:
+                raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+
+        user, db = user_db
+        previous_id = await db["user_profiles"].count_documents({})
+
+        biodata = profile_data.model_dump()
+        biodata.update({
+            "profile_id": previous_id + 1,
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
+        })
+        
+        if image_url:
+            biodata["image_url"] = image_url
+
+        # ✅ Duplicate checks
+        for key in ["full_name", "father_name", "contact_no"]:
+            if await db["user_profiles"].find_one({key: biodata[key]}):
+                return HTTPException(status_code=400, detail=f"{key.replace('_', ' ').title()} already exists")
+
         added = await db["user_profiles"].insert_one(biodata)
         if not added.inserted_id:
-            raise HTTPException(status_code=500, detail="Failed to add profile to the database")
-        
-        return JSONResponse(status_code=status.HTTP_200_OK, content={'message': 'Profile Created Successfully'})
-        
+            return HTTPException(status_code=500, detail="Failed to add profile to the database")
+
+        return JSONResponse(status_code=200, content={'message': 'Profile Created Successfully'})
+
     except Exception as e:
-        print(f"Unexpected Error: {e}")  # Log the error
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        print(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
 
 @router.get("/get-profile/{profile_id}")
@@ -198,49 +252,61 @@ async def full_profile(profile_id: str, user_db = Depends(get_authenticated_agen
     
 
 @router.post("/upload-pdf")
-async def upload_pdf_db(request: Request ,file: UploadFile = File(...), user_db=Depends(get_authenticated_agent_db)):
-    try:    
-        file_contants = await file.read() 
-        user, db = user_db
-        try:
-            images_data = convert_pdf_to_images(file_contants,scale=300/72)
-        except Exception as e:
-            print(f"error logs {e}")
-            return JSONResponse(status_code=500, content={"error": f"PDF rendering failed: {str(e)}"})
-        
-        try:
-            extracted_text = extract_text_with_pytesseract(images_data)
-            print(extracted_text)
-        except Exception as e:
-            return JSONResponse(status_code=500, content={"error": f"OCR failed: {str(e)}"})
-        
-        result = None
-        try:
-            # await db["user_profiles"].create_index("profile_id", unique=True)
-            profile_data = extract_profile_data(extracted_text)
-            profile_data["row_text"] = extracted_text
-            print(profile_data)
-            result = await db["user_profiles"].insert_one(profile_data)
-            print(result)
-            profile_id = str(result.inserted_id)[-6:].lower()
-            # chars = string.ascii_lowercase + string.digits
-            # unique_id = f"USR-{''.join(random.choices(chars, k=6))}"
-            # print(f" u id : {unique_id}")
-            await db["user_profiles"].update_one(
-                {"_id": result.inserted_id},
-                {"$set": {"profile_id": profile_id}}
-            )
+async def upload_biodata(request: Request, file: UploadFile = File(...), user_db=Depends(get_authenticated_agent_db)):
+    user, db = user_db
+    result = None
+
+    try:     
+        # Save uploaded file temporarily
+        filename = file.filename or "tempfile"
+        suffix = os.path.splitext(filename)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        # Determine if it's image or PDF
+        if suffix.lower() == ".pdf":
+            extracted_text = extract_text_from_pdf(tmp_path)
+        else:
+            extracted_text = extract_text_from_image(tmp_path)
+
+        # Extract structured data from LLaMA via Groq API
+        response_text = send_to_llama(extracted_text, api_key=os.getenv("GROQ_API_KEY"))
+        profile_data = safe_parse_dict(response_text)
+        profile_data["row_text"] = extracted_text
+
+        print(f"profile-data: {profile_data}")
+        # ✅ Duplicate checks
+        for key in ["full_name", "father_name", "contact_no"]:
+            if await db["user_profiles"].find_one({key: profile_data[key]}):
+                raise HTTPException(status_code=400, detail=f"{key.replace('_', ' ').title()} already exists")
             
-            return JSONResponse(status_code=200, content={"message": "PDF Upload Successfully.", "profile_id": profile_id, "_id":result.inserted_id})
-        except DuplicateKeyError:
-            if result:
-                await db["user_profiles"].delete_one({"_id": result.inserted_id})
-            raise HTTPException(status_code=409, detail="Profile ID conflict. Try again.")
+        # Insert into DB
+        result = await db["user_profiles"].insert_one(profile_data)
+        profile_id = str(result.inserted_id)[-6:].lower()
+        await db["user_profiles"].update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"profile_id": profile_id}}
+        )
+
+        return JSONResponse(status_code=200, content={
+            "message": "Upload successful.",
+            "profile_id": profile_id,
+            "_id": str(result.inserted_id)
+        })
+
+    except DuplicateKeyError:
+        if result:
+            await db["user_profiles"].delete_one({"_id": result.inserted_id})
+        raise HTTPException(status_code=409, detail="Duplicate profile ID.")
     except Exception as e:
         if result:
             await db["user_profiles"].delete_one({"_id": result.inserted_id})
-        logger.error(f"Create profile failed: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error.")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+    finally:
+        # Clean up the temp file
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
     
 
 # ------------------------------------------------------------------
