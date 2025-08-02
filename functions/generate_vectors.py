@@ -110,6 +110,9 @@ from langchain_qdrant import Qdrant
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
 from tqdm import tqdm
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 async def create_qdrant_indexes(mongodb_uri, db_name, collection_name):
     """Create separate Qdrant collections for male and female profiles."""
@@ -131,8 +134,8 @@ async def create_qdrant_indexes(mongodb_uri, db_name, collection_name):
     embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
     # Qdrant setup
-    qdrant_url = "https://6cc74303-ab87-438b-bc32-f225f7e038d1.europe-west3-0.gcp.cloud.qdrant.io:6333"
-    qdrant_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.o30xdRs_ctcJmTCw2DVWab7UQ6gWKbJPTvEwHXFsLX4"
+    qdrant_url = os.getenv("Qdrant_URL")
+    qdrant_api_key = os.getenv("Qdrant_API_KEY")
     qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60.0)
 
     # --- Helper function to preprocess text ---
