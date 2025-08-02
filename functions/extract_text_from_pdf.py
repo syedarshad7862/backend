@@ -317,7 +317,7 @@ def save_dict_to_file(data, filename="profile_data.py"):
 # Example for PDF:
 input_path = r"c:\Users\ThinkPad\Desktop\python projects\pdfs\00000439-PHOTO-2025-05-05-19-21-50.jpg"
 # Example for JPG:
-# input_path = "/content/sample_biodata.jpg" # <--- Uncomment and change to your JPG path
+
 
 # Define your Groq API key
 api_key = os.getenv("GROQ_API_KEY")
