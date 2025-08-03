@@ -65,6 +65,7 @@ async def create_chunks(mongodb_uri, db_name, collection_name):
         "Education: "+ " " + df["education"].astype(str) + " \n" +
         "Height: "+ " " + df["height"].astype(str) + " \n" +
         "Native_place: "+ " " + df["native_place"].astype(str) + " \n" +
+        "legal status: "+ " " + df["legal_status"].astype(str) + " \n" +
         "ethnicity: "+ " " + df["ethnicity"].astype(str) + " \n" +
         "residence: "+ " " + df["residence"].astype(str) + " \n" +
         "Father: "+ " " + df["father"].astype(str) + " \n" +
