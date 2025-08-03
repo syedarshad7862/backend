@@ -17,6 +17,7 @@ import datetime
 import tempfile
 from cloudinary.exceptions import Error as CloudinaryError
 from cloudinary.uploader import upload as cloudinary_upload
+import cloudinary.uploader
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
@@ -132,7 +133,7 @@ async def create_profile(
             biodata["image_url"] = image_url
 
         # ✅ Duplicate checks
-        for key in ["full_name", "father_name", "contact_no"]:
+        for key in ["father_name", "contact_no"]:
             if await db["user_profiles"].find_one({key: biodata[key]}):
                 return HTTPException(status_code=400, detail=f"{key.replace('_', ' ').title()} already exists")
 
@@ -168,7 +169,8 @@ async def get_profile(request: Request,profile_id: str,user_db=Depends(get_authe
 @router.put("/update-profile/{profile_id}")
 async def update_profile(
     profile_id: str,
-    update_data: schemas.UpdateProfileRequest,
+    update_data: str = Form(...),  # JSON string
+    profile_image: UploadFile = File(None),
     user_db=Depends(get_authenticated_agent_db)
 ):
     user, db = user_db
@@ -179,12 +181,32 @@ async def update_profile(
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid profile ID")
 
-    # Convert Pydantic model to dict, skipping None fields
-    update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+        # Parse JSON data
+    try:
+        update_dict = schemas.UpdateProfileRequest(**json.loads(update_data)).model_dump(exclude_none=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid update data: {e}")
 
-    if not update_dict:
-        raise HTTPException(status_code=400, detail="No fields to update")
+    # check the existing profile
+    existing_profile = await db["user_profiles"].find_one({"_id": obj_id})
+    
+    if not existing_profile:
+        raise HTTPException(status_code=404, detail="profile not found") 
 
+    #handle new image
+    if profile_image:
+        try:
+            # Optionally: delete old image
+            if existing_profile.get("image_url"):
+                public_id = existing_profile["image_url"].split("/")[-1].split(".")[0]
+                cloudinary.uploader.destroy(f"matrimony_profiles/{public_id}")
+
+            result = cloudinary_upload(profile_image.file, folder="matrimony_profiles")
+            update_dict["image_url"] = result.get("secure_url")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Image upload failed: {e}")
+        
+        
     # Perform the update
     result = await db["user_profiles"].update_one(
         {"_id": obj_id},
@@ -192,7 +214,7 @@ async def update_profile(
     )
 
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail="No changes made to the profile")
 
     # Optional: Fetch updated profile to return
     updated_profile = await db["user_profiles"].find_one({"_id": obj_id})
@@ -212,25 +234,22 @@ async def delete_profile(request: Request,profile_id: str,user_db=Depends(get_au
         return {"error": "Invalid ID"}
     profile = await db["user_profiles"].find_one_and_delete({'_id': obj_id})
     if not profile:
-        raise HTTPException(
+        raise HTTPException( 
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Profile not found",
         )
+    #delete image from cloudinary
+    try:
+        if profile.get("image_url"):
+            public_id = profile["image_url"].split("/")[-1].split(".")[0]
+            cloudinary.uploader.destroy(f"matrimony_profiles/{public_id}")
+    except Exception as e:
+        print(f"Failed to delete image: {e}")
+        
     profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
     return JSONResponse(status_code=200, content={"messeage": "profile deleted"})
 
 
-
-# @router.get("/full-details")
-# async def full_profile(profile_id: int, user_db = Depends(get_authenticated_agent_db)):
-#     user, db = user_db
-#     profile = await db["user_profiles"].find_one({"profile_id": profile_id})
-#     if not profile:
-#         return JSONResponse(status_code=404, content={"error": "Profile not found"})
-#     # Convert ObjectId to str
-#     profile["_id"] = str(profile["_id"])
-#     print(profile)
-#     return  JSONResponse(status_code=200, content={"profile": profile}) # FastAPI will return JSON
 @router.get("/full-details")
 async def full_profile(profile_id: str, user_db = Depends(get_authenticated_agent_db)):
     user, db = user_db
