@@ -8,7 +8,6 @@ from bson.errors import InvalidId
 from auth.dependencies import get_authenticated_agent_db
 from pymongo.errors import DuplicateKeyError
 import os
-from os.path import splitext
 from functions.extract_text_from_pdf import extract_text_from_image,extract_text_from_pdf,send_to_llama,safe_parse_dict
 import logging
 from typing import Any, Dict
@@ -148,11 +147,20 @@ async def create_profile(
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
 
+
+def clean_mongo_document(doc):
+    return {
+        **doc,
+        "_id": str(doc["_id"]) if "_id" in doc else None,
+        "created_at": doc.get("created_at").isoformat() if isinstance(doc.get("created_at"), datetime.datetime) else None,
+    }
+
 @router.get("/get-profile/{profile_id}")
 async def get_profile(request: Request,profile_id: str,user_db=Depends(get_authenticated_agent_db)):
     user, db = user_db
     try:
         obj_id = ObjectId(profile_id)
+        print(obj_id)
     except InvalidId:
         return {"error": "Invalid ID"}
     profile = await db["user_profiles"].find_one({'_id': obj_id})
@@ -162,9 +170,9 @@ async def get_profile(request: Request,profile_id: str,user_db=Depends(get_authe
             detail="Profile not found",
         )
     
-    profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
-
-    return JSONResponse(status_code=200, content={"profile":profile})
+    # profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
+    profile_serialized = clean_mongo_document(profile)
+    return JSONResponse(status_code=200, content={"profile":profile_serialized})
 
 @router.put("/update-profile/{profile_id}")
 async def update_profile(
@@ -264,9 +272,10 @@ async def full_profile(profile_id: str, user_db = Depends(get_authenticated_agen
             detail="Profile not found",
         )
     
-    profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
+    # profile["_id"] = str(profile["_id"])  # Fix ObjectId issue
+    profile_serialized = clean_mongo_document(profile)
 
-    return JSONResponse(status_code=200, content={"profile":profile})
+    return JSONResponse(status_code=200, content={"profile":profile_serialized})
     
     
 
