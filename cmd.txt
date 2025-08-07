@@ -1,0 +1,13 @@
+
+1. cmd for create docker image :-
+    docker build -t arshad7862/matrimony .
+
+2. run the docker image locally :- 
+    docker run -d -p 8000:8000 arshad7862/matrimony
+
+3. login to Docker Hub :-
+    docker login
+
+4. push the image to docker Hub :-
+    docker push arshad7862/matrimony
+
